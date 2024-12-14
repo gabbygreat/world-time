@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:world_clock/utility/world_time.dart';
+import 'package:world_clock/utility/network.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 
 class Loading extends StatefulWidget {
@@ -10,36 +10,49 @@ class Loading extends StatefulWidget {
 }
 
 class _LoadingState extends State<Loading> {
+  bool loading = true;
   void setupWorldTime() async {
-    WorldTime instance =
-        WorldTime(location: 'London', flag: 'uk.JPG', url: 'London');
-    await instance.getTime();
-   
-    Navigator.pushReplacementNamed(context, '/home', arguments: {
-      'location':instance.location,
-      'time': instance.time,
-      'flag':instance.flag,
-      'isDay':instance.isDay,
-    });
+    try {
+      DateTimeInfo info = await NetworkRequest.fetchInitialTime();
+      Navigator.pushReplacementNamed(
+        context,
+        '/home',
+        arguments: info.toJson(),
+      );
+    } catch (e) {
+      loading = false;
+    }
   }
 
   @override
   void initState() {
     super.initState();
     setupWorldTime();
-    print('this is initstate');
   }
 
   @override
   Widget build(BuildContext context) {
-    print('this is build state');
     return Scaffold(
       backgroundColor: Colors.blue,
-      body: SafeArea(
-        child:  SpinKitFadingFour(
-            color: Colors.white,
-            size: 100.0,
-          ),
+      body: Builder(
+        builder: (context) {
+          if (loading) {
+            return SpinKitFadingFour(
+              color: Colors.white,
+              size: 100.0,
+            );
+          } else {
+            return TextButton(
+              onPressed: () {
+                setState(() {
+                  loading = true;
+                });
+                setupWorldTime();
+              },
+              child: Text('Retry'),
+            );
+          }
+        },
       ),
     );
   }

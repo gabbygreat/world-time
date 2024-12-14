@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:world_clock/utility/world_time.dart';
+import 'package:world_clock/utility/network.dart';
 
 class ChooseLocation extends StatefulWidget {
   const ChooseLocation({super.key});
@@ -8,62 +8,87 @@ class ChooseLocation extends StatefulWidget {
   State<ChooseLocation> createState() => _ChooseLocationState();
 }
 
-List<WorldTime> updateFmt = [
-  WorldTime(location: 'Belgium', flag: 'belgium.JPG', url: 'Belgium'),
-  WorldTime(location: 'France', flag: 'france.JPG', url: 'France'),
-  WorldTime(location: 'Germany', flag: 'germany.JPG', url: 'Germany'),
-  WorldTime(location: 'Berlin', flag: 'germany.JPG', url: 'Berlin'),
-  WorldTime(location: 'Italy', flag: 'italy.JPG', url: 'Italy'),
-  WorldTime(location: 'Nigeria', flag: 'nigeria.JPG', url: 'Nigeria'),
-  WorldTime(location: 'Poland', flag: 'poland.JPG', url: 'Poland'),
-  WorldTime(location: 'Russia', flag: 'russia.JPG', url: 'Russia'),
-  WorldTime(location: 'Bulgaria', flag: 'russia.JPG', url: 'Bulgaria'),
-  WorldTime(location: 'USA', flag: 'usa.JPG', url: 'USA'),
-  WorldTime(location: 'London', flag: 'uk.JPG', url: 'London'),
-];
-
-
 class _ChooseLocationState extends State<ChooseLocation> {
+  void updateTime(String timezone) async {
+    try {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return Center(
+            child: CircularProgressIndicator(),
+          );
+        },
+      );
+      final time =
+          await NetworkRequest.fetchTime(timezone: timezone).whenComplete(() {
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+      });
+      Navigator.pop(context, time.toJson());
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    void updateTime(index) async {
-  WorldTime instance = updateFmt[index];
-  await instance.getTime();
-  Navigator.pop(context, {
-      'location':instance.location,
-      'time': instance.time,
-      'flag':instance.flag,
-      'isDay':instance.isDay,
-  });
-}
     return Scaffold(
-        appBar: AppBar(
-          title: Text(
-            'Choose a Location',
-            style: TextStyle(color: Colors.white, fontSize: 28.0),
-          ),
-          centerTitle: true,
-          backgroundColor: Colors.blueAccent,
+      appBar: AppBar(
+        title: Text(
+          'Choose a Location',
+          style: TextStyle(color: Colors.white, fontSize: 28.0),
         ),
-        body: ListView.builder(
-          itemCount: updateFmt.length,
-          itemBuilder: (context, index) {
-            return Padding(
-              padding: const EdgeInsets.all(3.0),
-              child: Card(
-                child: ListTile(
-                  onTap: () {
-                    updateTime(index);
-                  },
-                  title: Text(updateFmt[index].location),
-                  leading: CircleAvatar(
-                    backgroundImage:
-                        AssetImage('assets/${updateFmt[index].flag}'),
+        centerTitle: true,
+        backgroundColor: Colors.blueAccent,
+      ),
+      body: FutureBuilder(
+          future: NetworkRequest.fetchTimeZones(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(
+                child: CircularProgressIndicator(),
+              );
+            }
+            if (snapshot.data == null || snapshot.hasError) {
+              return Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    '${snapshot.error}',
+                    textAlign: TextAlign.center,
                   ),
-                ),
-              ),
+                  SizedBox(
+                    height: 20,
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {});
+                    },
+                    child: Text('Retry'),
+                  )
+                ],
+              );
+            }
+            return ListView.builder(
+              itemCount: snapshot.data!.length,
+              itemBuilder: (context, index) {
+                final text = snapshot.data![index];
+                return Padding(
+                  padding: const EdgeInsets.all(3.0),
+                  child: Card(
+                    child: ListTile(
+                      onTap: () {
+                        updateTime(text);
+                      },
+                      title: Text(text),
+                    ),
+                  ),
+                );
+              },
             );
-          },
-        ));
+          }),
+    );
   }
 }

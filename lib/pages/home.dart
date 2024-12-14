@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:world_clock/utility/network.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -8,18 +9,38 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  Map data = {};
+  late DateTimeInfo data;
+  bool fromInitial = true;
+
+  void onPressed() async {
+    final result = await Navigator.pushNamed(
+      context,
+      '/chooseLocation',
+    );
+    if (result == null) return;
+    data = DateTimeInfo.fromJson(
+      Map.from(result as Map<String, dynamic>),
+    );
+    fromInitial = false;
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
-    data = data.isNotEmpty ? data  : ModalRoute.of(context)?.settings.arguments as Map;
-    print(data);
+    final result =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>;
+    if (fromInitial) {
+      data = DateTimeInfo.fromJson(result);
+    }
     return Scaffold(
       backgroundColor: Colors.blueAccent,
       body: SafeArea(
         child: Container(
           decoration: BoxDecoration(
             image: DecorationImage(
-                image: AssetImage(data['isDay']), fit: BoxFit.cover),
+              image: AssetImage(data.isDay),
+              fit: BoxFit.cover,
+            ),
           ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(0, 200.0, 0, 0),
@@ -27,18 +48,7 @@ class _HomeState extends State<Home> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 TextButton(
-                  onPressed: () async {
-                    dynamic result =
-                        await Navigator.pushNamed(context, '/chooseLocation ');
-                    setState(() {
-                      data = {
-                        'time':result['time'],
-                        'location':result['location'],
-                        ' isDay': result['isDay'], 
-                        'flag':result['flag'] 
-                      };
-                    });
-                  },
+                  onPressed: onPressed,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -59,7 +69,7 @@ class _HomeState extends State<Home> {
                 ),
                 SizedBox(height: 15.0),
                 Text(
-                  data['location'],
+                  data.timezone,
                   style: TextStyle(
                     fontSize: 30.0,
                     color: Colors.white,
@@ -67,7 +77,7 @@ class _HomeState extends State<Home> {
                 ),
                 SizedBox(height: 15.0),
                 Text(
-                  data['time'],
+                  data.time,
                   style: TextStyle(
                     fontSize: 50.0,
                     color: Colors.white,
